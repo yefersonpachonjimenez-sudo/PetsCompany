@@ -1,7 +1,7 @@
 package org.example;
 
 import org.example.dao.*;
-import org.example.Model.*;
+import org.example.model.*;
 
 import java.util.List;
 import java.util.Scanner;
@@ -25,7 +25,8 @@ public class Main {
             System.out.println("3. Ingresar Cliente");
             System.out.println("4. Salir");
             System.out.print("Seleccione una opcion: ");
-            opcion = Integer.parseInt(scanner.nextLine());
+
+            opcion = leerEntero();
 
             switch (opcion) {
                 case 1 -> ingresarProveedor();
@@ -82,7 +83,7 @@ public class Main {
         }
 
         System.out.print("Ingrese el ID del proveedor: ");
-        int idProveedor = Integer.parseInt(scanner.nextLine());
+        int idProveedor = leerEntero();
 
         Proveedor proveedorSeleccionado = proveedorDAO.buscarPorId(idProveedor);
         if (proveedorSeleccionado == null) {
@@ -100,10 +101,10 @@ public class Main {
         producto.setDescripcion(scanner.nextLine());
 
         System.out.print("Precio: ");
-        producto.setPrecio(Double.parseDouble(scanner.nextLine()));
+        producto.setPrecio(leerDouble());
 
         System.out.print("Stock: ");
-        producto.setStock(Integer.parseInt(scanner.nextLine()));
+        producto.setStock(leerEntero());
 
         boolean guardado = productoDAO.insertar(producto);
         if (!guardado) {
@@ -128,7 +129,7 @@ public class Main {
         System.out.println("2. Unidades adicionales (ej: lleva 3 paga 2)");
         System.out.println("3. Ambas                (descuento + unidades extra)");
         System.out.print("Seleccione el tipo: ");
-        int tipo = Integer.parseInt(scanner.nextLine());
+        int tipo = leerEntero();
 
         if (tipo < 1 || tipo > 3) {
             System.out.println("Opcion invalida. No se registro ninguna promocion.");
@@ -152,43 +153,39 @@ public class Main {
         try {
             promocion.setFechaFin(java.sql.Date.valueOf(scanner.nextLine()));
         } catch (IllegalArgumentException e) {
-            System.out.println("Fecha de fin omitida.");
+            System.out.println("Fecha de fin omitida o formato invalido.");
         }
 
         double descuentoPct = 0;
         String detalle = "";
 
         if (tipo == 1) {
-            // Solo descuento porcentual
             System.out.print("Porcentaje de descuento (ej: 15 para 15%): ");
-            descuentoPct = Double.parseDouble(scanner.nextLine());
+            descuentoPct = leerDouble();
             detalle = "Descuento: " + (int) descuentoPct + "%";
             System.out.printf(">> %.0f%% de descuento en \"%s\".%n", descuentoPct, producto.getNombre());
 
         } else if (tipo == 2) {
-            // Solo unidades extra — se codifica en el nombre (la BD no tiene columna extra)
             System.out.print("¿Cuantas unidades LLEVA el cliente? (ej: 3 en 3x2): ");
-            int lleva = Integer.parseInt(scanner.nextLine());
+            int lleva = leerEntero();
             System.out.print("¿Cuantas unidades PAGA el cliente?  (ej: 2 en 3x2): ");
-            int paga = Integer.parseInt(scanner.nextLine());
+            int paga = leerEntero();
             descuentoPct = 0;
             detalle = lleva + "x" + paga;
             System.out.printf(">> Promocion %dx%d en \"%s\".%n", lleva, paga, producto.getNombre());
 
         } else {
-            // Ambas
             System.out.print("Porcentaje de descuento (ej: 10 para 10%): ");
-            descuentoPct = Double.parseDouble(scanner.nextLine());
+            descuentoPct = leerDouble();
             System.out.print("¿Cuantas unidades LLEVA el cliente?: ");
-            int lleva = Integer.parseInt(scanner.nextLine());
+            int lleva = leerEntero();
             System.out.print("¿Cuantas unidades PAGA el cliente?: ");
-            int paga = Integer.parseInt(scanner.nextLine());
+            int paga = leerEntero();
             detalle = "Descuento: " + (int) descuentoPct + "% + " + lleva + "x" + paga;
             System.out.printf(">> Promocion combinada: %.0f%% + %dx%d en \"%s\".%n",
                     descuentoPct, lleva, paga, producto.getNombre());
         }
 
-        // El nombre final queda: "Promo Octubre | Descuento: 15%"  o  "Promo | 3x2"  etc.
         promocion.setNombre(nombreBase + " | " + detalle);
         promocion.setDescuentoPct(descuentoPct);
 
@@ -198,7 +195,8 @@ public class Main {
             return;
         }
 
-        // Vincular con tabla producto_promocion
+        // *ADVERTENCIA*: Asegúrate de que promocionDAO.insertar() actualice el ID
+        // del objeto 'promocion' tras el INSERT en la base de datos.
         ProductoPromocion pp = new ProductoPromocion();
         pp.setIdProducto(producto.getIdProducto());
         pp.setIdPromocion(promocion.getIdPromocion());
@@ -234,6 +232,9 @@ public class Main {
         }
         System.out.println("Cliente registrado exitosamente.");
 
+        // OJO: Si tu clienteDAO no devuelve el ID autogenerado, búscalo aquí:
+        // cliente = clienteDAO.buscarPorCorreo(cliente.getCorreo());
+
         System.out.print("\n¿Desea registrar productos para este cliente? (s/n): ");
         if (!scanner.nextLine().equalsIgnoreCase("s")) return;
 
@@ -255,7 +256,7 @@ public class Main {
 
         while (continuar.equalsIgnoreCase("s")) {
             System.out.print("ID del producto a agregar: ");
-            int idProducto = Integer.parseInt(scanner.nextLine());
+            int idProducto = leerEntero();
 
             Producto prod = productoDAO.buscarPorId(idProducto);
             if (prod == null) {
@@ -271,7 +272,6 @@ public class Main {
             continuar = scanner.nextLine();
         }
 
-        // Descuento por volumen
         double descuento = calcularDescuento(cantidadProductos);
         double totalConDescuento = totalSinDescuento * (1 - descuento);
 
@@ -308,7 +308,7 @@ public class Main {
         }
 
         ClientePromocion cp = new ClientePromocion();
-        cp.setIdCliente(cliente.getIdCliente());
+        cp.setIdCliente(cliente.getIdCliente()); // Asegúrate de que este ID no sea 0
         cp.setIdPromocion(promocion.getIdPromocion());
         cp.setFechaAdquirida(new java.sql.Date(System.currentTimeMillis()));
 
@@ -317,6 +317,29 @@ public class Main {
             System.out.println("Promocion del " + (int)(descuento * 100) + "% asignada al cliente.");
         } else {
             System.out.println("No se pudo registrar la promocion del cliente.");
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // MÉTODOS AUXILIARES PARA LECTURA SEGURA
+    // ─────────────────────────────────────────────
+    private static int leerEntero() {
+        while (true) {
+            try {
+                return Integer.parseInt(scanner.nextLine());
+            } catch (NumberFormatException e) {
+                System.out.print("Dato invalido. Ingrese un numero entero: ");
+            }
+        }
+    }
+
+    private static double leerDouble() {
+        while (true) {
+            try {
+                return Double.parseDouble(scanner.nextLine());
+            } catch (NumberFormatException e) {
+                System.out.print("Dato invalido. Ingrese un valor numerico (ej: 12.50): ");
+            }
         }
     }
 }
